@@ -1,20 +1,12 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const uuid = require('uuid')
+const uuid = require('uuid');
 const asyncHandler = require('express-async-handler');
 const { generateToken } = require('../utils/JWTService');
 const { ErrorHandler } = require('../helpers/ErrorHandler');
 const { verifyToken } = require('../utils/JWTService');
-const nodemailer = require('nodemailer');
-const sendgridTransport = require('nodemailer-sendgrid-transport');
+const { sendmail } = require('../utils/SendingMails');
 require('dotenv').config();
-const transporter = nodemailer.createTransport(
-	sendgridTransport({
-		auth: {
-			api_key : process.env.SendGrid_Key
-		},
-	})
-);
 
 /**
  * @desc     Register process
@@ -59,55 +51,6 @@ exports.login = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc     Deactivate process
- * @route    POST /auth/deactivate
- * @access   users
- */
-exports.Deactivate = asyncHandler(async (req, res, next) => {
-	const userId = req.body.userId;
-	const user = await User.findById(userId);
-	if (!user && userId !== req.user._id.toString()) {
-		throw new ErrorHandler(401, 'You Can not Deactivate this Account');
-	}
-	await user.delete();
-	res.json({ message: 'User Deactivated' });
-});
-
-/**
- * @desc     Activate process
- * @route    POST /auth/activate
- * @access   users
- */
-exports.Activate = asyncHandler(async (req, res, next) => {
-	const userId = req.body.userId;
-	const user = await User.findById(userId);
-	if (!user && userId !== req.user._id.toString()) {
-		throw new ErrorHandler(401, 'You Can not Activate this Account');
-	}
-	await user.restore();
-	res.json({ message: 'User Activated' });
-});
-
-/**
- * @desc     Refresh Token process
- * @route    POST /auth/refresh
- * @access   users
- */
-exports.refreshToken = asyncHandler(async (req, res, next) => {
-	if (!req.headers?.refresh && !req.headers?.refresh?.startsWith('Bearer')) {
-		throw new ErrorHandler(401, 'Invalid token');
-	}
-	const token = req.headers.refresh.split(' ')[1];
-	const decodedRefreshToken = verifyToken(token, 'refresh');
-
-	if (decodedRefreshToken && decodedRefreshToken.email === req.user.email) {
-		const payload = { email: req.user.email, _id: req.user._id };
-		const { accessToken, refreshToken } = generateToken(payload);
-		res.json({ accessToken, refreshToken });
-	}
-});
-
-/**
  * @desc     reset password process
  * @route    POST /auth/reset
  * @access   users
@@ -126,15 +69,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 	user.resetToken = resetToken;
 	await user.save();
 
-	transporter.sendMail({
-		to: email,
-		from: process.env.Sender_Email,
-		subject: 'Password reset',
-		html: `
-<p>You requested a password reset.</p>
-<p> Your Rest Code is ${resetCode}.</p>
-`,
-	});
+	sendmail(email, 'Password reset', `<p>You requested a password reset.</p><p> Your Rest Code is ${resetCode}.</p> `);
 
 	res.status(200).json({ status: 'code sent', resetData: { resetToken: resetToken, resetCode: resetCode } });
 });
@@ -156,15 +91,41 @@ exports.newPassword = asyncHandler(async (req, res, next) => {
 	const user = await User.findOne({ '$and': [{ email: decodedToken.email }, { resetToken: recivedToken }] });
 	user.password = newPassword;
 	await user.save();
-
-	transporter.sendMail({
-		to: decodedToken.email,
-		from: process.env.Sender_Email,
-		subject: 'Password reset',
-		html: `
-<p>password updated successfully.</p>
-`,
-	});
-
+	sendmail(decodedToken.email, 'Password reset', `<p>password updated successfully.</p>`);
 	res.status(200).json({ status: 'Password updated' });
+});
+
+/**
+ * @desc    Email verification
+ * @route    POST /auth/verify
+ * @access   users
+ */
+
+exports.verification = asyncHandler(async (req, res, next) => {
+	const { email } = req.body;
+	const user = await User.findOne({ email: email });
+	if (!user) {
+		throw new ErrorHandler(401, 'this email is not exist');
+	}
+	const payload = { id: user._id };
+
+	const sendToken = generateToken(payload);
+	const sendUrl = `${process.env.Base_URL}auth/verify/${user._id}/${sendToken}`;
+	sendmail(email, 'Email verification', `<p> Please verify your email click the url <a>${sendUrl}</a> </p>`);
+	res.status(200).json({ message: 'email Sent' });
+});
+
+/**
+ * @desc    Email confirmation
+ * @route    GET /auth/verify/:userid/:token
+ * @access   users
+ */
+exports.confirmation = asyncHandler(async (req, res, next) => {
+	const { userid, token } = req.params;
+	const user = await User.findById(userid);
+	const decodedUser = verifyToken(token);
+	if (user._id.toString() === decodedUser.id) {
+		await User.updateOne({ _id: user._id, isVerified: true });
+	}
+	res.status(200).json({ message: 'email verified sucessfully' });
 });

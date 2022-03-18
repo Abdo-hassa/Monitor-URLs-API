@@ -4,10 +4,7 @@ exports.generateToken = (payload, expiresToken = '2d', option) => {
 	if (option) {
 		return jwt.sign(payload, process.env.REST_TOKEN_SECRET, { expiresIn: expiresToken });
 	}
-	return {
-		accessToken: jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: expiresToken }),
-		refreshToken: jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, { expiresIn: expiresToken }),
-	};
+	return jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: expiresToken });
 };
 
 exports.verifyToken = (token, option) => {

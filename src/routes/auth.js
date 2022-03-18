@@ -4,9 +4,8 @@ const router = express.Router();
 const {
 	login,
 	register,
-	Deactivate,
-	Activate,
-	refreshToken,
+	verification,
+	confirmation,
 	resetPassword,
 	newPassword,
 } = require('../controllers/authController');
@@ -16,10 +15,9 @@ const { loginValidator, registerValidator } = require('../validation/authValidat
 
 router.post('/register', registerValidator, checkValidationErrors, register);
 router.post('/login', loginValidator, checkValidationErrors, login);
+router.post('/verify', verification);
+router.get('/verify/:userid/:token', confirmation);
 router.post('/reset', resetPassword);
 router.post('/newpass', newPassword);
-router.post('/deactivate', isAuth, Deactivate);
-router.post('/activate', isAuth, Activate);
-router.post('/refresh', isAuth, refreshToken);
 
 module.exports = router;
