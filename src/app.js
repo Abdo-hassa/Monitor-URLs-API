@@ -6,11 +6,14 @@ app.use(cors());
 app.use(express.json());
 const authRoute = require('./routes/auth');
 const checkRoute = require('./routes/check')
+const monitorRoute = require('./routes/monitor')
 app.get('/', (req, res) => {
 	res.send('api is running');
 });
 app.use('/api/auth', authRoute)
 app.use('/api/check', checkRoute)
+app.use('/api/monitor', monitorRoute)
+
 app.use(notFound);
 app.use(errorHandler);
 

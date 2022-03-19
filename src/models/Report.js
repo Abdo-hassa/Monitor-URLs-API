@@ -3,9 +3,15 @@ const Schema = mongoose.Schema;
 
 const reportSchema = new Schema(
 	{
+		check: {
+			type: Schema.Types.ObjectId,
+			ref: 'Check',
+		},
 		status: {
 			type: String,
-			required: true,
+		},
+		statusCode: {
+			type: Number,
 		},
 		availability: {
 			type: Number,
