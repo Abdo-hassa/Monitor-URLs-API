@@ -1,18 +1,21 @@
 const Check = require('../models/Check');
 const Report = require('../models/Report');
 const asyncHandler = require('express-async-handler');
-const { sendmail } = require('../utils/SendingMails');
+const { sendmail } = require('./SendingMails');
+const { ErrorHandler } = require('../helpers/ErrorHandler');
 
 exports.createReport = asyncHandler(async data => {
 	for (let key in data) {
 		const check = await Check.findOne({ url: key }).populate('user');
+		if (!check) {
+			throw new ErrorHandler(401, 'no check found ');
+		}
 		const report = await new Report({
 			check: check,
-			statusCode: data[key].statusCode,
+			statusCode: data[key].code,
 			status: data[key].status,
 			responseTime: data[key].time,
 		}).save();
-    // console.log(report)
 		sendmail(
 			check.user.email,
 			'Report mail',

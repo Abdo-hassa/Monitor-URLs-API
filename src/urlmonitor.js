@@ -5,6 +5,8 @@ var http = require('http');
 var https = require('https');
 var HTTPStatus = require('http-status');
 var urlp = require('url');
+const Check = require('./models/Check');
+const { createReport } = require('./utils/reportNotification');
 
 class urlk {
 	constructor(options) {
@@ -222,6 +224,27 @@ function message(url, code) {
 	return res;
 }
 
+function monitor() {
+	setInterval(async () => {
+		const checks = await Check.find();
+
+		urls = checks.map(check => {
+			return check.url;
+		});
+
+		var monitor = new urlk({
+			interval: 30000,
+			timeout: 3000,
+			list: urls,
+		});
+
+		monitor.on('change', data => {
+			console.log(data);
+			createReport(data);
+		});
+		monitor.start();
+	}, 1000 * 60);
+}
+
 //------ Export module
-// module.exports = urm;
-module.exports = urlk;
+module.exports = { monitor };

@@ -45,9 +45,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 	const payload = { email: user.email, _id: user._id };
 	const accessToken = generateToken(payload);
 
-	res
-		.status(200)
-		.json({ status: 'success', user: { accessToken: accessToken, _id: user._id } });
+	res.status(200).json({ status: 'success', user: { accessToken: accessToken, id: user._id } });
 });
 
 /**
